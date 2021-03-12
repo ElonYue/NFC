@@ -24,7 +24,7 @@ public class NfcNdefActivity extends AppCompatActivity {
         super.onCreate(paramBundle);
         setContentView(R.layout.test);
         this.nfcUtils = new NfcUtils(this);
-        findViewById(R.id.button).setOnClickListener(new View.OnClickListener() {
+        findViewById(R.id.btn_CPU).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View param1View) {
             }
