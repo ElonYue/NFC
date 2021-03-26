@@ -2,6 +2,7 @@ package com.cheng.nfc;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.MotionEvent;
 import android.view.View;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -31,6 +32,13 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View view) {
                 Intent intent = new Intent(MainActivity.this, NfcTagActivity.class);
                 MainActivity.this.startActivity(intent);
+            }
+        });
+
+        findViewById(R.id.btn_tag).setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                return false;
             }
         });
     }

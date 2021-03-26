@@ -9,6 +9,7 @@ import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.cheng.nfc.utils.ByteHex;
 import com.cheng.nfc.utils.Constant;
@@ -25,6 +26,15 @@ import androidx.appcompat.app.AppCompatActivity;
 
 public class NfcTechActivity extends AppCompatActivity {
     private static boolean READ_LOCK = false;
+    /**
+     * 1.0卡片的pin码
+     */
+    public static final String PIN_VERSION10 = "888888";
+
+    /**
+     * 4.0卡片的pin码
+     */
+    public static final String PIN_VERSION40 = "313233343536";
 
     private static final String TAG = "NfcTechActivity";
     IsoDep nfcA;
@@ -46,32 +56,40 @@ public class NfcTechActivity extends AppCompatActivity {
         findViewById(R.id.btn_CPU).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                int readICC0015Length = 43, readICC0019Length = 43, readICC0002Length = 4;
-                String[] cosCmds = new String[5];
+                int readICC0015Length = 43, readICC0019Length = 43, readICC0002Length = 4, readICC0018Length = 23;
+                String[] cosCmds = new String[6];
                 int cosNums = 0;
-                //指令：00B0960037 读取IC Card 0016文件55个字节 3F00目录下
+                //指令1：00B0960037 读取IC Card 0016文件55个字节 3F00目录下
+//                cosCmds[cosNums++] = ICCardUtility.selectByFileName(Constant.DFN_PSE);
+                cosCmds[cosNums++] = "00A40000023F0000";
                 cosCmds[cosNums++] = "00B0960037";
-                //指令：进入卡片1001（DF01目录） 联网收费应用目录
+                //指令2：进入卡片1001（DF01目录） 联网收费应用目录
                 cosCmds[cosNums++] = "00A40000021001";
-                //指令：00B095002B 读取IC Card 0015文件43个字节
+                //指令3：00B095002B 读取IC Card 0015文件43个字节
                 cosCmds[cosNums++] = String.format("00B09500%02X", (byte) readICC0015Length);
-                //指令：00B201CC2B 读取IC Card 0019文件43个字节
+                //指令4：00B201CC2B 读取IC Card 0019文件43个字节  (0x19 << 3) + 4 == 0xCC
                 cosCmds[cosNums++] = String.format("00B201CC%02X", (byte) readICC0019Length);
-                //指令，805C000204 读0002钱包文件
+                //指令5，805C000204 读0002钱包文件
                 cosCmds[cosNums++] = String.format("805C0002%02X", (byte) readICC0002Length);
+
                 int result = transceive(cosCmds);
+                String text = "";
                 if (result == 0) {
-                    tv_result.setText(parseCpuInfo(cosCmds));
+                    text = parseCpuInfo(cosCmds);
+                    text = text + readCardTransactionRecord(51, cosCmds[3].substring(18,20));
+                    tv_result.setText(text);
                 } else {
-                    LogUtil.d(String.format("操作失败，错误码=【%d】", result));
-                    tv_result.setText(String.format("操作失败，错误码=【%2X】", result));
+                    LogUtil.d(String.format("操作失败，错误码=【%2X】", result));
+                    text = String.format("操作失败，错误码=【%2X】\n", result);
+                    tv_result.setText(text);
                 }
+
             }
         });
         findViewById(R.id.btn_CPC).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                String[] cosCmds = new String[7];
+                String[] cosCmds = new String[8];
                 int cosNums = 0;
                 // CPC SN
                 cosCmds[cosNums++] = "80F6000304";
@@ -89,22 +107,24 @@ public class NfcTechActivity extends AppCompatActivity {
                 cosCmds[cosNums++] = "00B0840080";
 
                 int result = transceive(cosCmds);
+                String text = "";
                 if (result == 0) {
-                    tv_result.setText(parseCpcInfo(cosCmds));
+                    text = parseCpcInfo(cosCmds);
                 } else {
-                    LogUtil.d(String.format("操作失败，错误码=【%d】", result));
-                    tv_result.setText(String.format("操作失败，错误码=【%d】", result));
+                    LogUtil.d(String.format("操作失败，错误码=【%2X】", result));
+                    text = String.format("操作失败，错误码=【%2X】", result);
                 }
+                tv_result.setText(text);
             }
         });
     }
 
     private String parseCpuInfo(String[] cosCmds) {
         StringBuilder sb = new StringBuilder();
-        String file0016 = cosCmds[0];
-        String file0015 = cosCmds[2];
-        String file0019 = cosCmds[3];
-        String file0002 = cosCmds[4];
+        String file0016 = cosCmds[1];
+        String file0015 = cosCmds[3];
+        String file0019 = cosCmds[4];
+        String file0002 = cosCmds[5];
         // B0B2BBD534010001 17 10 2201 1030230200056249 19000101 19000101 CDEE48433035313300000000 1B 00 00
         sb.append("======卡片信息======").append("\n");
         sb.append("原始编码: ").append(file0015.substring(0, file0015.length()-4)).append("\n");
@@ -140,7 +160,7 @@ public class NfcTechActivity extends AppCompatActivity {
         sb.append("证件类型: ").append(Integer.parseInt(file0016.substring(108, 110), 16)).append("\n");
 
 
-        sb.append("======0019消费文件======").append("\n");
+        sb.append("======0019联网收费复合消费过程文件======").append("\n");
         sb.append("原始编码: ").append(file0019.substring(0, file0019.length() - 4)).append("\n");
         sb.append("消费标识: ").append(file0019.substring(0, 6)).append("\n");
         sb.append("网络编号: ").append(file0019.substring(6, 10)).append("\n");
@@ -252,6 +272,52 @@ public class NfcTechActivity extends AppCompatActivity {
         return sb.toString();
     }
 
+    /**
+     * 读取CPU 读0018终端交易记录
+     * @return
+     */
+    private String readCardTransactionRecord(int maxNum, String cardVersion) {
+        LogUtil.i("======读0018终端交易记录======");
+        String PIN = "888888";
+        if ("10".equals(cardVersion)) {
+            PIN = PIN_VERSION10;
+        } else if ("40".equals(cardVersion)) {
+            PIN = PIN_VERSION40;
+        } else {
+            Toast.makeText(getApplicationContext(),"卡片版本号不合法~", Toast.LENGTH_LONG).show();
+            return "卡片版本号不合法~";
+        }
+        final int readICC0018Length = 23;
+        StringBuilder sb = new StringBuilder();
+        sb.append("======0018终端交易记录文件======").append("\n");
+
+        // PIN验证
+        String command = String.format("00200000%02X%s", PIN.length() / 2, PIN);
+        String[] rsp = {command};
+        int result = transceive(rsp);
+        if (result != 0) {
+            LogUtil.d(String.format("PIN验证失败，错误码=【%2X】", result));
+            String text = String.format("PIN验证失败，错误码=【%2X】", result);
+            sb.append(text).append("\n");
+            return sb.toString();
+        }
+
+        for (int i = 1; i <= maxNum; i++) {
+            //指令，00B201C417 读0018终端交易记录 (0x18 << 3) + 4 == 0xC4
+            command = String.format("00B2%02XC4%02X", i, (byte) readICC0018Length);
+            rsp = new String[]{command};
+            result = transceive(rsp);
+            if (result != 0) {
+                LogUtil.d(String.format("0018读取第[%d]条记录失败，错误码=【%2X】", i, result));
+                sb.append(String.format("0018读取第[%d]条记录失败，错误码=【%2X】", i, result)).append("\n");
+                break;
+            } else {
+                sb.append(String.format("第[%d]条:%s", i,rsp[0])).append("\n");
+            }
+        }
+        return sb.toString();
+    }
+
     @Override
     protected void onNewIntent(Intent paramIntent) {
         super.onNewIntent(paramIntent);
@@ -284,6 +350,9 @@ public class NfcTechActivity extends AppCompatActivity {
             LogUtil.i(TAG, "nfcA.isConnected() = " + nfcA.isConnected());
         }
         Tag tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+        byte[] bytes = intent.getByteArrayExtra(NfcAdapter.EXTRA_ID);
+        String ECardId = String.valueOf((int) unsigned4BytesToInt(bytes, 0));
+        LogUtil.i("ECardId= " + ECardId);
         getNdefMsg(tag);
         READ_LOCK = true;
         LogUtil.i("action = " + intent.getAction());
@@ -291,6 +360,27 @@ public class NfcTechActivity extends AppCompatActivity {
             connect(tag);
         }
         READ_LOCK = false;
+    }
+
+    /**
+     * 将一个4byte的数组转换成32位的int
+     *
+     * @param buf
+     * @param
+     * @return convert result
+     */
+    public static long unsigned4BytesToInt(byte[] buf, int pos) {
+        int firstByte = 0;
+        int secondByte = 0;
+        int thirdByte = 0;
+        int fourthByte = 0;
+        int index = pos;
+        firstByte = (0x000000FF & ((int) buf[index]));
+        secondByte = (0x000000FF & ((int) buf[index + 1]));
+        thirdByte = (0x000000FF & ((int) buf[index + 2]));
+        fourthByte = (0x000000FF & ((int) buf[index + 3]));
+        index = index + 4;
+        return ((long) (firstByte << 24 | secondByte << 16 | thirdByte << 8 | fourthByte)) & 0xFFFFFFFFL;
     }
 
     /**
@@ -339,27 +429,21 @@ public class NfcTechActivity extends AppCompatActivity {
         try {
             for (int i = 0; i < cosNum; i++) {
                 String command = cosCmds[i];
+                LogUtil.i(TAG, String.format(Locale.CHINA, "指令[%d]: %s", i, command));
                 byte[] bytes = ByteHex.hexStringToBytes(command);
                 byte[] rsp = nfcA.transceive(bytes);
                 String result = ByteHex.bytesToHexString(rsp,rsp.length);
                 rspData[i] = result.toUpperCase();
+
+                LogUtil.i(TAG, String.format(Locale.CHINA, "响应[%d]: %s", i, result));
+
                 if (!result.substring(result.length() - 4).equals("9000")) {
                     return Integer.parseInt(result, 16);
                 }
             }
         } catch (Exception e) {
-            LogUtil.e(e.getMessage());
+            LogUtil.e(e);
             return Constant.COMMAND_EXCEPTION;
-        }
-
-        for (int j = 0; j < cosNum; j++) {
-            String cosCmd = String.format(Locale.CHINA, "指令[%d]: %s", j, cosCmds[j]);
-            LogUtil.i(TAG, cosCmd.toUpperCase());
-        }
-
-        for (int j = 0; j < cosNum; j++) {
-            String rsp = String.format(Locale.CHINA, "响应[%d]: %s", j, rspData[j]);
-            LogUtil.i(TAG, rsp.toUpperCase());
         }
 
         System.arraycopy(rspData, 0, cosCmds, 0, cosNum);

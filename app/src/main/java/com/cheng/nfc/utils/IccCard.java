@@ -30,12 +30,14 @@ public class IccCard {
     public static String _RESET_0019;
 
   static {
+      // 00B095002B
     READ_15 = new byte[]{0, -80, -107, 0, 43};
     READ_19 = new byte[]{Byte.MIN_VALUE, 92, 0, 2, 4};
     READ_16 = new byte[]{0, -80, -106, 0, 55};
     READ_11 = new byte[]{0, -80, -111, 0, 39};
     CMD_GET_RANDOM = new byte[]{0, -124, 0, 0, 8};
-    PIN = new byte[]{0, 32, 0, 0, 6, 49, 50, 51, 52, 53, 54};
+    // 0020000003888888
+    PIN = new byte[]{0, 32, 0, 0, 3, 56, 56, 56, 56, 56, 56};
     CMD_GET_RANDOM8 = new byte[]{0, -124, 0, 0, 8};
     CMD_GET_RANDOM4 = new byte[]{0, -124, 0, 0, 4};
     _READ_ELECTRONIC_WALLET = "805C000204";

@@ -2,150 +2,128 @@ package com.cheng.nfc.utils;
 
 import android.text.TextUtils;
 import android.util.Log;
-import com.cheng.nfc.BuildConfig;
 
 public final class LogUtil {
-  public static final int ERROR = 5;
-  
-  private static String TAG = "[NFCTEST]";
-  
+
+//  static Logger logger = LoggerFactory.getLogger(LogUtil.class);
+  private static String TAG = "[NFC]";
+  public static final int LEVEL = Log.ERROR;
+
   private static String className;
-  
-  public static int level = 5;
-  
-  private static int lineNumber;
-  
   private static String methodName;
-  
-  private static String createLog(String paramString) { return createLog("handsetETC", paramString); }
-  
-  private static String createLog(String paramString1, String paramString2) {
-    StringBuffer stringBuffer = new StringBuffer();
-    if (TextUtils.isEmpty(paramString1)) {
-      paramString1 = "(handsetETC)";
-    } else {
-      StringBuilder stringBuilder = new StringBuilder();
-      stringBuilder.append("(");
-      stringBuilder.append(paramString1);
-      stringBuilder.append(")");
-      paramString1 = stringBuilder.toString();
-    } 
-    stringBuffer.append(paramString1);
-    stringBuffer.append("[");
-    stringBuffer.append(methodName);
-    stringBuffer.append("]");
-    stringBuffer.append(paramString2);
-    return stringBuffer.toString();
+  private static int lineNumber;
+
+  private static boolean isDebuggable() {
+//        return BuildConfig.DEBUG || FlavorUtils.isTest();
+    return true;
   }
-  
-  public static void d(String paramString) {
-    logger(paramString);
-    if (!isDebuggable())
-      return; 
-    Log.d(TAG, createLog("", paramString));
+
+  // 拼接 方法名+行号+log
+  private static String createLog(String tag, String log) {
+    StringBuffer buffer = new StringBuffer();
+    buffer.append(TextUtils.isEmpty(tag) ? "(NFC)" : "(" + tag + ")");
+    buffer.append("[");
+    buffer.append(methodName);
+//        buffer.append(":");
+//        buffer.append(lineNumber);
+    buffer.append("]");
+    buffer.append(log);
+    return buffer.toString();
   }
-  
-  public static void d(String paramString1, String paramString2) {
-    logger(paramString2);
-    if (!isDebuggable())
-      return; 
-    Log.d(TAG, createLog(paramString1, paramString2));
-  }
-  
-  public static void e(String paramString) {
-    logger(paramString);
-    if (!isDebuggable())
-      return; 
-    Log.e(TAG, createLog("", paramString));
-  }
-  
-  public static void e(String paramString1, String paramString2) {
-    logger(paramString2);
-    if (!isDebuggable())
-      return; 
-    Log.e(TAG, createLog(paramString1, paramString2));
-  }
-  
+
   private static void getMethodNames() {
-    boolean bool = false;
-    StackTraceElement[] arrayOfStackTraceElement = (new Throwable()).getStackTrace();
-    int i = arrayOfStackTraceElement.length;
-    for (byte b = 0; b < i; b++) {
-      if (arrayOfStackTraceElement[b].getMethodName().startsWith("lambda"))
-        bool = true; 
-    } 
-    String str = arrayOfStackTraceElement[3].getClassName();
-    if (str.isEmpty())
-      return; 
-    if (str.contains("$")) {
-      str = str.substring(str.lastIndexOf(".") + 1, str.indexOf("$"));
+    //判断是否含有 lambda 表达式
+    boolean next = false;
+    StackTraceElement[] traceElements = new Throwable().getStackTrace();
+    for (StackTraceElement value : traceElements) {
+      if (value.getMethodName().startsWith("lambda")) {
+        next = true;
+      }
+    }
+    String className = traceElements[3].getClassName();
+    if (className.isEmpty()) {
+      return;
+    } else if (className.contains("$")) { //用于内部类的名字解析
+      className = className.substring(className.lastIndexOf(".") + 1, className.indexOf("$"));
     } else {
-      str = str.substring(str.lastIndexOf(".") + 1, str.length());
-    } 
-    if (!bool) {
-      methodName = arrayOfStackTraceElement[3].getMethodName();
+      className = className.substring(className.lastIndexOf(".") + 1, className.length());
+    }
+
+    if (!next) {
+      methodName = traceElements[3].getMethodName();
     } else {
-      methodName = arrayOfStackTraceElement[5].getMethodName();
-    } 
-    lineNumber = arrayOfStackTraceElement[3].getLineNumber();
-    StringBuilder stringBuilder = new StringBuilder();
-    stringBuilder.append("(");
-    stringBuilder.append(str);
-    stringBuilder.append(".java:");
-    stringBuilder.append(lineNumber);
-    stringBuilder.append(")");
-    TAG = stringBuilder.toString();
+      methodName = traceElements[5].getMethodName();
+    }
+    lineNumber = traceElements[3].getLineNumber();
+    //生成指向java的字符串 加入到TAG标签里面
+    TAG = "(" + className + ".java:" + lineNumber + ")";
   }
-  
-  public static void i(String paramString) {
-    logger(paramString);
-    if (!isDebuggable())
-      return; 
-    Log.i(TAG, createLog("", paramString));
+
+  public static void v(String message) {
+    logger(Log.VERBOSE, "", message);
   }
-  
-  public static void i(String paramString1, String paramString2) {
-    logger(paramString2);
-    if (!isDebuggable())
-      return; 
-    Log.i(TAG, createLog(paramString1, paramString2));
+
+  public static void v(String tag, String message) {
+    logger(Log.VERBOSE, tag, message);
   }
-  
-  private static boolean isDebuggable() { return BuildConfig.DEBUG; }
-  
-  private static void logger(String paramString) { getMethodNames(); }
-  
-  public static void v(String paramString) {
-    logger(paramString);
-    if (!isDebuggable())
-      return; 
-    Log.v(TAG, createLog("", paramString));
+
+  public static void d(String message) {
+    logger(Log.DEBUG, "", message);
   }
-  
-  public static void v(String paramString1, String paramString2) {
-    logger(paramString2);
-    if (!isDebuggable())
-      return; 
-    Log.v(TAG, createLog(paramString1, paramString2));
+
+  public static void d(String tag, String message) {
+    logger(Log.DEBUG, tag, message);
   }
-  
-  public static void w(String paramString) {
-    logger(paramString);
-    if (!isDebuggable())
-      return; 
-    Log.w(TAG, createLog("", paramString));
+
+  public static void i(String message) {
+    logger(Log.INFO, "", message);
   }
-  
-  public static void w(String paramString1, String paramString2) {
-    logger(paramString2);
-    if (!isDebuggable())
-      return; 
-    Log.w(TAG, createLog(paramString1, paramString2));
+
+  public static void i(String tag, String message) {
+    logger(Log.INFO, tag, message);
+  }
+
+  public static void w(String message) {
+    logger(Log.WARN, "", message);
+  }
+
+  public static void w(String tag, String message) {
+    logger(Log.WARN, tag, message);
+  }
+
+  public static void e(String message) {
+    logger(Log.ERROR, "", message);
+  }
+
+  public static void e(String tag, String message) {
+    logger(Log.ERROR, tag, message);
+  }
+
+  public static void e(Exception e) {
+    logger(Log.ERROR, "", Log.getStackTraceString(e));
+  }
+
+  public static void e(String tag, Exception e) {
+    logger(Log.ERROR, tag, Log.getStackTraceString(e));
+  }
+
+  private static void logger(int level, String tag, String message) {
+    if (!isDebuggable() || level > LEVEL) {
+      return;
+    }
+    getMethodNames();
+
+    if (level == Log.VERBOSE) {
+      Log.v(TAG, createLog(tag, message));
+    } else if (level == Log.DEBUG) {
+      Log.d(TAG, createLog(tag, message));
+    } else if (level == Log.INFO) {
+      Log.i(TAG, createLog(tag, message));
+    } else if (level == Log.WARN) {
+      Log.w(TAG, createLog(tag, message));
+    } else if (level == Log.ERROR) {
+      Log.e(TAG, createLog(tag, message));
+    }
+//    logger.info(TAG + " : " + message);
   }
 }
-
-
-/* Location:              /Users/chengyue/Documents/Development/DevelopmentTool/apktool/dex2jar-2.0/app-debug-dex2jar.jar!/com/cheng/nfc/utils/LogUtil.class
- * Java compiler version: 6 (50.0)
- * JD-Core Version:       1.0.7
- */
